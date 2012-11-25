@@ -74,10 +74,57 @@ function parseFile( filename ){
         nextItem = data[i + 1];
         item.data = file.substr( item.index, nextItem && nextItem.index );
     }
-    console.log( data.length );
-    console.log( data[0] );
+    console.log('done: ' + data.length );
+    for( var i = 0; i < 1; i++ ){
+        parseMaterial( data[i] );
+    }
+    
 }
+function parseMaterial( mat ){
+    var values = mat.data.match(/\s*([^\s]+)/img),
+        index = 1 + 8 * 4, /* пропустить нули */
+        i;
+    if( !values ){
+        console.log('ERROR: Не парсится материал');
+        return;
+    }
+    mat.dataLength = values[ index++ ];
+    var nxs = ['nes', 'ntr', 'nr', 'nrtp'];
+    mat.nxs = {};
+    for( i = 0; i < nxs.length; i++ ){
+        mat.nxs[ nxs[i] ] = values[ index + i ].trim();
+    }
+    index += i + 2 + 8;/* 2 лишних параметра + 1 лишняя строчка с 8 параметрами */
+    mat.jxs = {};
+    var jxs =  ['fsz', 'nu', 'mtr', 'lqr', 'tyr', 'lsig', 'sig', 'land',
+                'and', 'ldlw', 'dlw', 'gpd', 'mtrp', 'lsigp', 'sigp', 'landp',
+                'andp', 'ldlwp', 'dlwp', 'yp', 'fis', 'end'];
+    var indexes = [], value, valueIndex;
+    for( i = 0; i < jxs.length; i++ ){
+        value = values[ index + i ].trim();
+        if( value && value !== '0' ){
+            valueIndex = indexes.push( value );
+            mat.jxs[ jxs[i] ] = valueIndex - 1;
+        }
+    }
 
+    index += i + 2 + 8 - 1;
+    for( i in mat.jxs ){
+        valueIndex = mat.jxs[ i ];
+        mat.jxs[ i ] = {
+            begin: Number( indexes[ valueIndex ] ),
+            end: Number( indexes[ valueIndex + 1 ] )
+        }
+    }
+    console.log(mat.jxs);
+    /* теперь сделаем кучу массивов */
+    for( i in mat.jxs ){
+        value = mat.jxs[ i ];
+        
+        mat.jxs[ i ] = values.slice( index + value.begin, index + value.end )
+    }
+    console.log(mat.jxs);
+}
 
 function parseFile2( filename ){
 
