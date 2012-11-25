@@ -1,0 +1,38 @@
+ZAID, AtomicWeightRatio, temperature, date
+70-chars comment, 10-char mat identifier
+IZ(1,16), AW(1,16)/* 0-es, ignored */
+IZ(1,16), AW(1,16)/* 0-es, ignored */
+IZ(1,16), AW(1,16)/* 0-es, ignored */
+IZ(1,16), AW(1,16)/* 0-es, ignored */
+NXS(1,8): Lenght of data, ZA(ex. 1001), NES number of energies, NTR number of reactions w/o elastic, NR number of reactions having secondary neutrons w/o elastic, NTRP number of photon production reactions, -, -
+NXS(9,16): -, -, -, -, -, -, number of PIKMT reactions, -1=don't produce photons
+JXS(1,8):   FSZ energy table, NU fission NU data, MTR MT array, LQR Q-value array
+            TYR reaction type array, LSIG table of cross-sections locations, SIG cross-sections, LAND table of angular distribution locators
+JXS(9,16):  AND angular distributions, LDLW table of energy distribution locators, DLW energy distributions, GPD photon production data
+            MTRP photon production array, LSIGP table of photon production cross section locators, SIGP photon production cross-sections, LANDP table of photon production angular distribution locators
+JXS(17,24): ANDP photon production angular distributions, LDLWP table of photon production energy distribution locators, DLWP photon production energy distributions, YP table of yeild multipliers
+            FIS total fission cross-section, END last word of this table, -, -
+JXS(25,32): -, -, -, -, -, -, -, -
+
+FSZ: 
+NU: r
+MTR :
+LQR: 
+TYR: 
+LSIG:
+SIG: 
+LAND:
+AND: 
+LDLW:
+DLW: 
+GPD: 
+MTRP:
+LSIGP
+SIGP:
+LANDP
+ANDP:
+LDLWP
+DLWP:
+YP: r
+FIS: 
+END: 
