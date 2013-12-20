@@ -53,16 +53,18 @@ function parseFile( filename ){
     var file = fs.readFileSync( filename, 'utf-8' ),
         material,
         data = [],
-        regexp = /^\s*(\d{4,6}\.\d{2}[ch])\s*([^\s]*)\s*([^\s]*)\s*([^\s]*)\s*^.+\s*/igm;
+        regexp = /^\s*(\d{4,6})\.(\d{2}[ch])\s*([^\s]*)\s*([^\s]*)\s*([^\s]*)\s*^.+\s*/igm;
     console.log( 'begin' );
     do{
         material = regexp.exec( file );
         if( material ){
             data.push({
-                zaid: material[1],
-                weight: material[2],
-                temperature: material[3],
-                date: material[4],
+                atomicNumber: Number(material[1].substr(0, material[1].length - 3)),
+                massNumber: Number(material[1].substr(material[1].length - 3)),
+                lib: material[2],
+                weight: material[3],
+                temperature: material[4],
+                date: material[5],
                 index: regexp.lastIndex
             });
         }
@@ -77,6 +79,13 @@ function parseFile( filename ){
     console.log('done: ' + data.length );
     for( var i = 0; i < 1; i++ ){
         parseMaterial( data[i] );
+        findReactions( data[i] );
+        cleanMat( data[i] );
+        if( 1 ){
+            console.log( JSON.stringify( data[i] ) );
+        }else{
+            console.log( xmlOutput( data[i] ) );
+        }
     }
     
 }
@@ -88,11 +97,14 @@ function parseMaterial( mat ){
         console.log('ERROR: Ќе парситс€ материал');
         return;
     }
+    for( i = 0; i < values.length; i++ ){
+        values[i] = values[i].trim();
+    }
     mat.dataLength = values[ index++ ];
     var nxs = ['nes', 'ntr', 'nr', 'nrtp'];
     mat.nxs = {};
     for( i = 0; i < nxs.length; i++ ){
-        mat.nxs[ nxs[i] ] = values[ index + i ].trim();
+        mat.nxs[ nxs[i] ] = values[ index + i ];
     }
     index += i + 2 + 8;/* 2 лишних параметра + 1 лишн€€ строчка с 8 параметрами */
     mat.jxs = {};
@@ -116,75 +128,52 @@ function parseMaterial( mat ){
             end: Number( indexes[ valueIndex + 1 ] )
         }
     }
-    console.log(mat.jxs);
     /* теперь сделаем кучу массивов */
     for( i in mat.jxs ){
         value = mat.jxs[ i ];
         
         mat.jxs[ i ] = values.slice( index + value.begin, index + value.end )
     }
-    console.log(mat.jxs);
 }
-
-function parseFile2( filename ){
-
-    var file = fs.readFileSync( filename, 'utf-8' );
-    var obj = {
-            zaid: readValue( file ),
-            awr: readValue( file ),
-            temperature: readValue( file ),
-            date: readValue( file )
-        },
-        l = 5;
-    while( l-- ){
-        readLine( file ); // пропуск коммента, идентификатора и 4х строчек нулей
+function findReactions( mat ){
+    var energyTable = mat.jxs.fsz,
+        energyEntriesCount = Number( mat.nxs.nes ),
+        total = {}, // MT1
+        absorption = {}, // MT27
+        elastic = {}, // MT2
+        i, energy; 
+    
+    for( i = 0; i < energyEntriesCount; i++ ){
+        energy = energyTable[ i ];
+        total[ energy ] = energyTable[ energyEntriesCount + i ];
+        absorption[ energy ] = energyTable[ 2*energyEntriesCount + i ];
+        elastic[ energy ] = energyTable[ 3*energyEntriesCount + i ];
     }
-    /* NXS */
-    obj.dataLength = readValue( file );
-    readValue( file ); // пропуск ZA
-    obj.NES = readValue( file );
-    obj.NTR = readValue( file );
-    obj.NR = readValue( file );
-    obj.NTRP = readValue( file );
-    /* 2 лишних параметра + 1 лишн€€ строчка с 8 параметрами */
-    l = 10;
-    while( l-- ){
-        readValue( file );
+    mat.reactions = {
+        '1' : total,
+        '2' : elastic,
+        '27' : absorption
     }
-    /* JXS */
-    obj.pointers = {
-        FSZ: Number(readValue( file )),
-        NU: Number(readValue( file )),
-        MTR: Number(readValue( file )),
-        LQR: Number(readValue( file )),
-        TYR: Number(readValue( file )),
-        LSIG: Number(readValue( file )),
-        SIG: Number(readValue( file )),
-        LAND: Number(readValue( file )),
-        AND: Number(readValue( file )),
-        LDLW: Number(readValue( file )),
-        DLW: Number(readValue( file )),
-        GPD: Number(readValue( file )),
-        MTRP: Number(readValue( file )),
-        LSIGP: Number(readValue( file )),
-        SIGP: Number(readValue( file )),
-        LANDP: Number(readValue( file )),
-        ANDP: Number(readValue( file )),
-        LDLWP: Number(readValue( file )),
-        DLWP: Number(readValue( file )),
-        YP: Number(readValue( file )),
-        FIS: Number(readValue( file )),
-        END: Number(readValue( file ))
+}
+function cleanMat( mat ){
+    delete mat.jxs;
+    delete mat.nxs;
+    delete mat.index;
+    delete mat.lib;
+    delete mat.data;
+}
+function xmlOutput( mat ){
+    var i, l,
+        str = '<material atomicNumber="' + mat.atomicNumber +
+        '" massNumber="' + mat.massNumber + '" temperature="' + mat.temperature + '" date="' + mat.date + '">\n';
+    for( var num in mat.reactions ){
+        var reaction = mat.reactions[num];
+        str += '\t<reaction mt="' + num + '">\n';
+        for( var energy in reaction ){
+            str += '\t\t' + energy + '; ' + reaction[ energy ] + ';\n';
+        }
+        str += '\t</reaction>\n';
     }
-    readValue( file );
-    readValue( file );
-    readLine( file );    
-    /* закончили, дальце цифры */
-    l = obj.pointers.END;
-    var data = [];
-    while( l-- ){
-        data.push( readValue( file ) );
-    }
-    obj.data = data;
-    //console.log( obj );
+    str += '</material>';
+    return str;
 }
