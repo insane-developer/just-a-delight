@@ -60,29 +60,39 @@ function parseFile( filename ){
     var file = fs.readFileSync( filename, 'utf-8' ),
         material,
         data = [],
-        regexp = /^\s*(\d{4,6})\.(\d{2}[ch])\s*([^\s]*)\s*([^\s]*)\s*([^\s]*)\s*^.+\s*/igm;
+        regexp = /^\s*(\d{4,6})\.(\d{2}[ch])\s*([^\s]*)\s*([^\s]*)\s*([^\s]*)\s*^.+\s*/igm,
+        prevIndex = 0;
+        i = 0;
     do{
         material = regexp.exec( file );
         if( material ){
-            data.push({
+            index = regexp.lastIndex;
+            data[i] = {
                 atomicNumber: Number(material[1].substr(0, material[1].length - 3)),
                 massNumber: Number(material[1].substr(material[1].length - 3)),
                 lib: material[2],
                 weight: material[3],
                 temperature: material[4],
-                date: material[5],
-                index: regexp.lastIndex
-            });
+                date: material[5]
+            };
+            if(i > 0){
+                data[i-1].data = file.substr(prevIndex, index);
+            }
+            prevIndex = index;
+            i++;
         }
     }while( material );
+
+    data[data.length - 1].data = file.substr(index);
+
+    file = null;
+
     var item, nextItem, i, l = data.length;
     for( var i = 0; i < l; i++ ){
         item = data[i];
-        nextItem = data[i + 1];
-        item.data = file.substr( item.index, nextItem && nextItem.index );
-        parseMaterial( data[i] );
-        findReactions( data[i] );
-        cleanMat( data[i] );
+        parseMaterial(item);
+        findReactions(item);
+        cleanMat(item);
     }
     return data;
     
@@ -91,6 +101,7 @@ function parseMaterial( mat ){
     var values = mat.data.match(/\s*([^\s]+)/img),
         index = 1 + 8 * 4, /* пропустить нули*/
         i;
+    mat.data = null;
     if( !values ){
         throw new Error('Не парсится материал');
         return;
@@ -156,7 +167,6 @@ function findReactions( mat ){
 function cleanMat( mat ){
     delete mat.jxs;
     delete mat.nxs;
-    delete mat.index;
     delete mat.lib;
     delete mat.data;
 }
