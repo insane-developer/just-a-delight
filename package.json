@@ -2,5 +2,11 @@
   "name": "delight",
   "description": "njoy ACER format converter",
   "version": "0.0.1",
-  "private": true
+  "private": true,
+  "bin": {
+      "just-a-delight": "bin/just-a-delight"
+  },
+  "dependencies": {
+    "nopt": "^3.0.2"
+  }
 }

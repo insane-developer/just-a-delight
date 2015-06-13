@@ -2,6 +2,13 @@ var fs = require('fs');/*,
 	materials = parseXSDIR('xsdir');*/
 //console.log(materials);
 
+module.exports = {
+    parseFile: parseFile,
+    parseXSDIR: parseXSDIR,
+    xmlOutputXSDIR: xmlOutputXSDIR,
+    xmlOutputFile: xmlOutputFile,
+};
+
 function parseXSDIR( file ){
 	var file = fs.readFileSync( file, 'utf-8' ),
 		file = file.substr( file.indexOf('directory') + 10 ),
@@ -32,29 +39,28 @@ function parseXSDIR( file ){
         //2000.03e  3.968217  el03     0   1  596  2329   0   0  .0
 		// -   - -    [0]      [1]    [2] [3] [4]   [5]  [6] [7]   [8]
         if( data[3] === 2 ){
-            console.log('ERROR: Бинарный файл будет пропущен');
+            throw new TypeError('Р‘РёРЅР°СЂРЅС‹Р№ С„Р°Р№Р» ' + data[1]);
             break;
         }
 		materials[ match[1] + '.' + match[2] + match[3] ] = {
-			continious: match[3] === 'c',
+			continuous: match[3] === 'c',
 			atomicNumber: Number(match[1].substr(0, match[1].length - 3)),
             massNumber: Number(match[1].substr(match[1].length - 3)),
             weight: data[0],
 			file: data[1],
-			offset: data[4],/* номер строки */
+			offset: data[4],/* РЅРѕРјРµСЂ СЃС‚СЂРѕРєРё */
             length: (data[5] + 3)/4 + 12,
             temperature: data[8] /* MeV */
 		}
 	}
     return materials;
 }
-parseFile('la150n');
+
 function parseFile( filename ){
     var file = fs.readFileSync( filename, 'utf-8' ),
         material,
         data = [],
         regexp = /^\s*(\d{4,6})\.(\d{2}[ch])\s*([^\s]*)\s*([^\s]*)\s*([^\s]*)\s*^.+\s*/igm;
-    console.log( 'begin' );
     do{
         material = regexp.exec( file );
         if( material ){
@@ -69,32 +75,24 @@ function parseFile( filename ){
             });
         }
     }while( material );
-    console.log('indexes');
     var item, nextItem, i, l = data.length;
     for( var i = 0; i < l; i++ ){
         item = data[i];
         nextItem = data[i + 1];
         item.data = file.substr( item.index, nextItem && nextItem.index );
-    }
-    console.log('done: ' + data.length );
-    for( var i = 0; i < 1; i++ ){
         parseMaterial( data[i] );
         findReactions( data[i] );
         cleanMat( data[i] );
-        if( 1 ){
-            console.log( JSON.stringify( data[i] ) );
-        }else{
-            console.log( xmlOutput( data[i] ) );
-        }
     }
+    return data;
     
 }
 function parseMaterial( mat ){
     var values = mat.data.match(/\s*([^\s]+)/img),
-        index = 1 + 8 * 4, /* пропустить нули */
+        index = 1 + 8 * 4, /* РїСЂРѕРїСѓСЃС‚РёС‚СЊ РЅСѓР»Рё*/
         i;
     if( !values ){
-        console.log('ERROR: Не парсится материал');
+        throw new Error('РќРµ РїР°СЂСЃРёС‚СЃСЏ РјР°С‚РµСЂРёР°Р»');
         return;
     }
     for( i = 0; i < values.length; i++ ){
@@ -106,7 +104,7 @@ function parseMaterial( mat ){
     for( i = 0; i < nxs.length; i++ ){
         mat.nxs[ nxs[i] ] = values[ index + i ];
     }
-    index += i + 2 + 8;/* 2 лишних параметра + 1 лишняя строчка с 8 параметрами */
+    index += i + 2 + 8;/* 2 Р»РёС€РЅРёС… РїР°СЂР°РјРµС‚СЂР° + 1 Р»РёС€РЅСЏСЏ СЃС‚СЂРѕС‡РєР° СЃ 8 РїР°СЂР°РјРµС‚СЂР°РјРё */
     mat.jxs = {};
     var jxs =  ['fsz', 'nu', 'mtr', 'lqr', 'tyr', 'lsig', 'sig', 'land',
                 'and', 'ldlw', 'dlw', 'gpd', 'mtrp', 'lsigp', 'sigp', 'landp',
@@ -128,7 +126,7 @@ function parseMaterial( mat ){
             end: Number( indexes[ valueIndex + 1 ] )
         }
     }
-    /* теперь сделаем кучу массивов */
+    /* С‚РµРїРµСЂСЊ СЃРґРµР»Р°РµРј РєСѓС‡Сѓ РјР°СЃСЃРёРІРѕРІ */
     for( i in mat.jxs ){
         value = mat.jxs[ i ];
         
@@ -162,18 +160,48 @@ function cleanMat( mat ){
     delete mat.lib;
     delete mat.data;
 }
-function xmlOutput( mat ){
-    var i, l,
-        str = '<material atomicNumber="' + mat.atomicNumber +
-        '" massNumber="' + mat.massNumber + '" temperature="' + mat.temperature + '" date="' + mat.date + '">\n';
-    for( var num in mat.reactions ){
-        var reaction = mat.reactions[num];
-        str += '\t<reaction mt="' + num + '">\n';
-        for( var energy in reaction ){
-            str += '\t\t' + energy + '; ' + reaction[ energy ] + ';\n';
+function attrs(data){
+    str = '';
+    for(var name in data){
+        if(data.hasOwnProperty(name)){
+            str += ' ' + name + '="' + data[name] + '"';
         }
-        str += '\t</reaction>\n';
     }
-    str += '</material>';
+    return str;
+}
+function xmlOutputXSDIR( data ){
+    var str = '<xsdir>';
+    for(var id in data){
+        if(data.hasOwnProperty(id)){
+            var elem = data[id];
+            elem.id = id;
+            str += '\t<element' + attrs(elem) + '/>\n';
+        }
+    }
+    str += '</xsdir>';
+    return str;
+}
+function xmlOutputFile( data ){
+    var str = '<materials>\n';
+    for(var i = 0, l = data.length; i < l; i++){
+        var mat = data[i];
+        
+        str += '\t<material' + attrs({
+                atomicNumber: mat.atomicNumber,
+                massNumber: mat.massNumber,
+                temperature: mat.temperature,
+                date: mat.date
+            })+ '>\n';
+        for( var num in mat.reactions ){
+            var reaction = mat.reactions[num];
+            str += '\t\t<reaction mt="' + num + '">\n';
+            for( var energy in reaction ){
+                str += '\t\t\t' + energy + '; ' + reaction[ energy ] + ';\n';
+            }
+            str += '\t\t</reaction>\n';
+        }
+        str += '\t</material>\n';
+    }
+    str += '</materials>';
     return str;
 }

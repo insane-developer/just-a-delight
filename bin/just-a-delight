@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+var nopt = require('nopt'),
+    path = require('path'),
+    delight = require('../main.js'),
+    opts = nopt({
+        xsdir: path,
+        file: path,
+        xml: Boolean,
+        help: Boolean
+    });
+if(!opts.xsdir && !opts.file || opts.help){
+    console.error('--xsdir <path>\tраспарсить xsdir файл\n' +
+        '--file <path>\tраспарсить файл сечений\n' +
+        '--xml\t\tвывести в xml, а не в json\'е\n' +
+        '--help\t\tувидеть это сообщение');
+        return 1;
+}
+var result;
+if(opts.xsdir){
+    result = delight.parseXSDIR(path.resolve(opts.xsdir));
+    if(opts.xml){
+        console.log(delight.xmlOutputXSDIR(result));
+    }else{
+        console.log(JSON.stringify(result, null, '    '));
+    }
+}else if(opts.file){
+    result = delight.parseFile(path.resolve(opts.file));
+    if(opts.xml){
+        console.log(delight.xmlOutputFile(result));
+    }else{
+        console.log(JSON.stringify(result, null, '    '));
+    }
+}
+
